@@ -1,0 +1,18 @@
+server:
+  port: 8080
+  env: production
+
+database:
+  host: db.example.com
+  port: 5432
+  user: admin
+  password: supersecret
+  name: cleantown
+
+auth:
+  jwtsecret: prod_secret_key
+  issuer: cleantown
+
+payment:
+  provider: stripe
+  apikey: live_payment_key
