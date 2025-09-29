@@ -117,3 +117,10 @@ func LoadConfig(path string) (*Config, error) {
 
 	return &config, nil
 }
+
+func (d DatabaseConfig) DSN() string {
+	return fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		d.Host, d.Port, d.User, d.Password, d.Name,
+	)
+}
