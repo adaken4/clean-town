@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/adaken4/clean-town/internal/config"
+	"github.com/adaken4/clean-town/internal/database"
 )
 
 // Declare a string containing the application version number
@@ -29,12 +30,28 @@ func main() {
 
 	// Declare an instance of the config struct.
 	var cfg *config.Config
-	
+
 	cfg, err := config.LoadConfig(".env.example")
 	if err != nil {
 		logger.Error("Failed to load configuration:", "error", err.Error())
 		os.Exit(1)
 	}
+
+	dsn := cfg.Database.DSN()
+
+	db, err := database.ConnectWithRetry(dsn, 5)
+	if err != nil {
+		logger.Error("database connection failed", "error", err.Error())
+		os.Exit(1)
+	}
+
+	// Defer a call to db.Close() so that the connection pool is closed before the
+	// main() function exits.
+	defer db.Close()
+
+	// Also log a message to say that the connection pool has been successfully
+	// established.
+	logger.Info("database connection pool established")
 
 	// Declare an instance of the application struct, containing the config struct and
 	// the logger.
