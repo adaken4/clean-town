@@ -37,9 +37,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	dsn := cfg.Database.DSN()
-
-	db, err := database.ConnectWithRetry(dsn, 5)
+	db, err := database.ConnectWithRetry(cfg.Database)
 	if err != nil {
 		logger.Error("database connection failed", "error", err.Error())
 		os.Exit(1)
