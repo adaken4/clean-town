@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
@@ -25,11 +26,18 @@ type ServerConfig struct {
 
 // DatabaseConfig holds database connection details.
 type DatabaseConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
-	Name     string `mapstructure:"name"`
+	Host         string        `mapstructure:"host"`
+	Port         int           `mapstructure:"port"`
+	User         string        `mapstructure:"user"`
+	Password     string        `mapstructure:"password"`
+	Name         string        `mapstructure:"name"`
+	SSLMode      string        `mapstructure:"sslmode"`
+	MaxRetries   int           `mapstructure:"max_retries"`
+	RetryBackoff time.Duration `mapstructure:"retry_backoff"` // in secs
+	// Connection pool settings
+	MaxOpenConns int           `mapstructure:"max_open_conns"`
+	MaxIdleConns int           `mapstructure:"max_idle_conns"`
+	MaxIdleTime  time.Duration `mapstructure:"max_idle_time"` // in minutes
 }
 
 // AuthConfig holds authentication-related settings (JWT secret, issuer).
@@ -85,6 +93,12 @@ func LoadConfig(path string) (*Config, error) {
 	v.BindEnv("database.user", "DATABASE_USER")
 	v.BindEnv("database.password", "DATABASE_PASSWORD")
 	v.BindEnv("database.name", "DATABASE_NAME")
+	v.BindEnv("database.sslmode", "DB_SSL_MODE")
+	v.BindEnv("database.max_retries", "MAX_RETRIES")
+	v.BindEnv("database.retry_backoff", "RETRY_BACKOFF")
+	v.BindEnv("database.max_open_conns", "DB_MAX_OPEN_CONNS")
+	v.BindEnv("database.max_idle_conns", "DB_MAX_IDLE_CONNS")
+	v.BindEnv("database.max_idle_time", "DB_MAX_IDLE_TIME")
 	v.BindEnv("auth.jwtsecret", "AUTH_JWTSECRET")
 	v.BindEnv("auth.issuer", "AUTH_ISSUER")
 	v.BindEnv("payment.provider", "PAYMENT_PROVIDER")
@@ -98,6 +112,12 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("database.user", "postgres")
 	v.SetDefault("database.password", "password")
 	v.SetDefault("database.name", "appdb")
+	v.SetDefault("database.sslmode", "disable")
+	v.SetDefault("database.max_retries", 5)
+	v.SetDefault("database.retry_backoff", 1)
+	v.SetDefault("database.max_open_conns", 25)
+	v.SetDefault("database.max_idle_conns", 25)
+	v.SetDefault("database.max_idle_time", 15)
 	v.SetDefault("auth.issuer", "myapp")
 	v.SetDefault("payment.provider", "stripe")
 
@@ -120,7 +140,7 @@ func LoadConfig(path string) (*Config, error) {
 
 func (d DatabaseConfig) DSN() string {
 	return fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		d.Host, d.Port, d.User, d.Password, d.Name,
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		d.Host, d.Port, d.User, d.Password, d.Name, d.SSLMode,
 	)
 }
