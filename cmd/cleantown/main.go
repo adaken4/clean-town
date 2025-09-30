@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -50,6 +51,11 @@ func main() {
 	// Also log a message to say that the connection pool has been successfully
 	// established.
 	logger.Info("database connection pool established")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	startMetricsMonitoring(ctx, db)
 
 	// Declare an instance of the application struct, containing the config struct and
 	// the logger.
