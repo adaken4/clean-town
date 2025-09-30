@@ -13,7 +13,7 @@ import (
 func ConnectWithRetry(cfg config.DatabaseConfig) (*sql.DB, error) {
 	var db *sql.DB
 	var openErr, pingErr error
-	backoff := cfg.RetryBackoff * time.Second
+	backoff := time.Duration(cfg.RetryBackoff) * time.Second
 
 	// Exponential backoff retry
 	for i := 0; i < cfg.MaxRetries; i++ {
@@ -26,7 +26,7 @@ func ConnectWithRetry(cfg config.DatabaseConfig) (*sql.DB, error) {
 				// Configure pool
 				db.SetMaxOpenConns(cfg.MaxOpenConns)
 				db.SetMaxIdleConns(cfg.MaxIdleConns)
-				db.SetConnMaxIdleTime(cfg.MaxIdleTime * time.Minute)
+				db.SetConnMaxIdleTime(time.Duration(cfg.MaxIdleTime) * time.Minute)
 
 				return db, nil
 			}

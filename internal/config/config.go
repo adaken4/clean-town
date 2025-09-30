@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
@@ -26,18 +25,18 @@ type ServerConfig struct {
 
 // DatabaseConfig holds database connection details.
 type DatabaseConfig struct {
-	Host         string        `mapstructure:"host"`
-	Port         int           `mapstructure:"port"`
-	User         string        `mapstructure:"user"`
-	Password     string        `mapstructure:"password"`
-	Name         string        `mapstructure:"name"`
-	SSLMode      string        `mapstructure:"sslmode"`
-	MaxRetries   int           `mapstructure:"max_retries"`
-	RetryBackoff time.Duration `mapstructure:"retry_backoff"` // in secs
+	Host         string `mapstructure:"host"`
+	Port         int    `mapstructure:"port"`
+	User         string `mapstructure:"user"`
+	Password     string `mapstructure:"password"`
+	Name         string `mapstructure:"name"`
+	SSLMode      string `mapstructure:"sslmode"`
+	MaxRetries   int    `mapstructure:"max_retries"`
+	RetryBackoff int    `mapstructure:"retry_backoff"` // in secs
 	// Connection pool settings
-	MaxOpenConns int           `mapstructure:"max_open_conns"`
-	MaxIdleConns int           `mapstructure:"max_idle_conns"`
-	MaxIdleTime  time.Duration `mapstructure:"max_idle_time"` // in minutes
+	MaxOpenConns int `mapstructure:"max_open_conns"`
+	MaxIdleConns int `mapstructure:"max_idle_conns"`
+	MaxIdleTime  int `mapstructure:"max_idle_time"` // in minutes
 }
 
 // AuthConfig holds authentication-related settings (JWT secret, issuer).
