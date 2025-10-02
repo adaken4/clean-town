@@ -52,6 +52,17 @@ func main() {
 	// established.
 	logger.Info("database connection pool established")
 
+	// Apply all pending "up" migrations from the ./migrations directory.
+	// If there are no new migrations, it does nothing.
+	// The application exits on migration errors to prevent running with an invalid schema.
+	err = database.RunMigrations(db, "./migrations")
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	logger.Info("database migrations applied")
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
