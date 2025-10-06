@@ -46,3 +46,23 @@ func (r *PostgresUserRepository) FindByEmail(ctx context.Context, email string) 
 	}
 	return user, nil
 }
+
+// FindByID retrieves a user by their unique ID.
+// It excludes soft-deleted users by filtering on deleted_at IS NULL.
+func (r *PostgresUserRepository) FindByID(ctx context.Context, id int64) (*User, error) {
+	user := new(User)
+	query := `
+        SELECT id, name, email, password_hash, role, town, status, created_at, updated_at, deleted_at
+        FROM users
+        WHERE id = $1 AND deleted_at IS NULL
+    `
+	err := r.DB.QueryRowContext(ctx, query, id).Scan(
+		&user.ID, &user.Name, &user.Email, &user.PasswordHash,
+		&user.Role, &user.Town, &user.Status,
+		&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
