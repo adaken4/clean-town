@@ -79,3 +79,15 @@ func (r *PostgresUserRepository) Update(ctx context.Context, user *User) error {
 	_, err := r.DB.ExecContext(ctx, query, user.Name, user.Email, user.Role, user.Town, user.Status, user.ID)
 	return err
 }
+
+// UpdateStatus updates only the status field of a user,
+// ensuring the user is not soft-deleted. It refreshes updated_at.
+func (r *PostgresUserRepository) UpdateStatus(ctx context.Context, userID uint64, status string) error {
+	query := `
+        UPDATE users
+        SET status = $1, updated_at = NOW()
+        WHERE id = $2 AND deleted_at IS NULL
+    `
+	_, err := r.DB.ExecContext(ctx, query, status, userID)
+	return err
+}
