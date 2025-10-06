@@ -66,3 +66,16 @@ func (r *PostgresUserRepository) FindByID(ctx context.Context, id int64) (*User,
 	}
 	return user, nil
 }
+
+// Update modifies the profile fields of an existing user.
+// This excludes password changes and soft-deleted users.
+// The updated_at timestamp is refreshed.
+func (r *PostgresUserRepository) Update(ctx context.Context, user *User) error {
+	query := `
+        UPDATE users
+        SET name = $1, email = $2, role = $3, town = $4, status = $5, updated_at = NOW()
+        WHERE id = $6 AND deleted_at IS NULL
+    `
+	_, err := r.DB.ExecContext(ctx, query, user.Name, user.Email, user.Role, user.Town, user.Status, user.ID)
+	return err
+}
