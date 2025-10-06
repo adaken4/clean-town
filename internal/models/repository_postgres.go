@@ -26,3 +26,23 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *User) error {
 		user.Town,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 }
+
+// FindByEmail retrieves a user by their email address (case-insensitive via CITEXT).
+// It excludes soft-deleted users by ensuring deleted_at IS NULL.
+func (r *PostgresUserRepository) FindByEmail(ctx context.Context, email string) (*User, error) {
+	user := new(User)
+	query := `
+        SELECT id, name, email, password_hash, role, town, status, created_at, updated_at, deleted_at
+        FROM users
+        WHERE email = $1 AND deleted_at IS NULL
+    `
+	err := r.DB.QueryRowContext(ctx, query, email).Scan(
+		&user.ID, &user.Name, &user.Email, &user.PasswordHash,
+		&user.Role, &user.Town, &user.Status,
+		&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
