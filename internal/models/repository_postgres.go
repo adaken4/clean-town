@@ -3,6 +3,8 @@ package models
 import (
 	"context"
 	"database/sql"
+
+	"github.com/lib/pq"
 )
 
 type PostgresUserRepository struct {
@@ -101,6 +103,41 @@ func (r *PostgresUserRepository) FindByTown(ctx context.Context, town string, ro
         WHERE town = $1 AND role = $2 AND deleted_at IS NULL
     `
 	rows, err := r.DB.QueryContext(ctx, query, town, role)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*User
+	for rows.Next() {
+		user := new(User)
+		err := rows.Scan(
+			&user.ID, &user.Name, &user.Email, &user.PasswordHash,
+			&user.Role, &user.Town, &user.Status,
+			&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	return users, nil
+}
+
+// FindBySkills retrieves unique users who have any of the specified skills,
+// joining on the user_skills table. Soft-deleted users are excluded.
+func (r *PostgresUserRepository) FindBySkills(ctx context.Context, skills []string) ([]*User, error) {
+	if len(skills) == 0 {
+		return []*User{}, nil
+	}
+
+	query := `
+        SELECT DISTINCT u.id, u.name, u.email, u.password_hash, u.role, u.town, u.status, u.created_at, u.updated_at, u.deleted_at
+        FROM users u
+        JOIN user_skills us ON u.id = us.user_id
+        WHERE us.skill = ANY($1) AND u.deleted_at IS NULL
+    `
+	rows, err := r.DB.QueryContext(ctx, query, pq.Array(skills))
 	if err != nil {
 		return nil, err
 	}
