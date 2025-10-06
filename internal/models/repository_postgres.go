@@ -91,3 +91,33 @@ func (r *PostgresUserRepository) UpdateStatus(ctx context.Context, userID uint64
 	_, err := r.DB.ExecContext(ctx, query, status, userID)
 	return err
 }
+
+// FindByTown fetches all users located in a specific town with a given role,
+// excluding soft-deleted records.
+func (r *PostgresUserRepository) FindByTown(ctx context.Context, town string, role string) ([]*User, error) {
+	query := `
+        SELECT id, name, email, password_hash, role, town, status, created_at, updated_at, deleted_at
+        FROM users
+        WHERE town = $1 AND role = $2 AND deleted_at IS NULL
+    `
+	rows, err := r.DB.QueryContext(ctx, query, town, role)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*User
+	for rows.Next() {
+		user := new(User)
+		err := rows.Scan(
+			&user.ID, &user.Name, &user.Email, &user.PasswordHash,
+			&user.Role, &user.Town, &user.Status,
+			&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	return users, nil
+}
