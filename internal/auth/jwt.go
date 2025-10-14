@@ -49,6 +49,36 @@ func GenerateRefreshToken(signingKey []byte, user models.User) (string, error) {
 	return token.SignedString(signingKey)
 }
 
+func VerifyToken(tokenString string) (*CustomClaims, error) {
+	// Parse the token with custom claims
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		// Verify signing algorithm
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+
+		// Return the secret key used for signing
+		return []byte("my-secret-key"), nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse token: %w", err)
+	}
+
+	// Type assert the claims
+	claims, ok := token.Claims.(*CustomClaims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid token claims")
+	}
+
+	// Additional validation
+	if err := ValidateClaims(claims); err != nil {
+		return nil, err
+	}
+
+	return claims, nil
+}
+
 func ValidateClaims(claims *CustomClaims) error {
 	// Validate expiration
 	if claims.ExpiresAt.Time.Before(time.Now()) {
