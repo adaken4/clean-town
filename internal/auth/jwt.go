@@ -32,3 +32,19 @@ func GenerateAccessToken(signingKey []byte, user models.User) (string, error) {
 
 	return token.SignedString(signingKey)
 }
+
+func GenerateRefreshToken(signingKey []byte, user models.User) (string, error) {
+	claims := CustomClaims{
+		UserID:   user.ID,
+		UserRole: user.Role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    TokenIssuer,
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)), // longer expiry (7 days)
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Subject:   fmt.Sprintf("user-%d", user.ID),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(signingKey)
+}
