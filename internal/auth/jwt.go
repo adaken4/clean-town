@@ -48,3 +48,19 @@ func GenerateRefreshToken(signingKey []byte, user models.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(signingKey)
 }
+
+func ValidateClaims(claims *CustomClaims) error {
+	// Validate expiration
+	if claims.ExpiresAt.Time.Before(time.Now()) {
+		return fmt.Errorf("token has expired")
+	}
+
+	// Validate issuer (if needed)
+	if claims.Issuer != TokenIssuer {
+		return fmt.Errorf("invalid issuer")
+	}
+
+	// Add any other custom validation logic
+
+	return nil
+}
