@@ -54,3 +54,16 @@ func (bl *InMemoryBlacklist) IsRevoked(token string) bool {
 	}
 	return false
 }
+
+// Cleanup removes tokens that have expired from the blacklist.
+func (bl *InMemoryBlacklist) Cleanup() {
+	bl.mutex.Lock()
+	defer bl.mutex.Unlock()
+
+	now := time.Now()
+	for token, expiry := range bl.revokedTokens {
+		if now.After(expiry) {
+			delete(bl.revokedTokens, token)
+		}
+	}
+}
