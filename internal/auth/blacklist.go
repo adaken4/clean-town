@@ -42,3 +42,15 @@ func (bl *InMemoryBlacklist) Revoke(token string, expiry time.Time) error {
 	bl.revokedTokens[token] = expiry
 	return nil
 }
+
+// IsRevoked checks if a token is currently revoked and not yet expired.
+func (bl *InMemoryBlacklist) IsRevoked(token string) bool {
+	bl.mutex.Lock()
+	defer bl.mutex.Unlock()
+
+	if expiry, exists := bl.revokedTokens[token]; exists {
+		// Token is considered revoked only if current time is before its expiry.
+		return time.Now().Before(expiry)
+	}
+	return false
+}
