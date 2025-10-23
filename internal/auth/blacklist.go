@@ -33,3 +33,12 @@ func NewInMemoryBlacklist() *InMemoryBlacklist {
 
 	return bl
 }
+
+// Revoke adds a token to the blacklist with its expiry time.
+func (bl *InMemoryBlacklist) Revoke(token string, expiry time.Time) error {
+	bl.mutex.Lock()
+	defer bl.mutex.Unlock()
+
+	bl.revokedTokens[token] = expiry
+	return nil
+}
