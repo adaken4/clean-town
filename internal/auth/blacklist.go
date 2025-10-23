@@ -19,3 +19,17 @@ type InMemoryBlacklist struct {
 	stopCleanup   chan struct{}        // Signals the cleanup goroutine to stop.
 	wg            sync.WaitGroup       // Tracks the cleanup goroutine for graceful shutdown.
 }
+
+// NewInMemoryBlacklist initializes a new InMemoryBlacklist and starts periodic cleanup.
+func NewInMemoryBlacklist() *InMemoryBlacklist {
+	bl := &InMemoryBlacklist{
+		revokedTokens: make(map[string]time.Time),
+		stopCleanup:   make(chan struct{}),
+	}
+
+	// Start background cleanup goroutine.
+	bl.wg.Add(1)
+	go bl.periodicCleanup()
+
+	return bl
+}
