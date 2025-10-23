@@ -67,3 +67,20 @@ func (bl *InMemoryBlacklist) Cleanup() {
 		}
 	}
 }
+
+// periodicCleanup runs in the background and periodically invokes Cleanup.
+func (bl *InMemoryBlacklist) periodicCleanup() {
+	defer bl.wg.Done()
+
+	ticker := time.NewTicker(1 * time.Hour) // Cleanup interval.
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			bl.Cleanup() // Perform cleanup every hour.
+		case <-bl.stopCleanup:
+			return // Exit the goroutine when stop signal is received.
+		}
+	}
+}
