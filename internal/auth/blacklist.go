@@ -84,3 +84,10 @@ func (bl *InMemoryBlacklist) periodicCleanup() {
 		}
 	}
 }
+
+// Close stops the cleanup goroutine and waits for it to finish.
+func (bl *InMemoryBlacklist) Close() error {
+	close(bl.stopCleanup) // Signal the cleanup goroutine to stop.
+	bl.wg.Wait()          // Wait for the goroutine to finish.
+	return nil
+}
