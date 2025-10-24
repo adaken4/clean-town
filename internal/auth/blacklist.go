@@ -1,8 +1,17 @@
 package auth
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 	"time"
+)
+
+var (
+	// ErrTokenRevoked is returned when a token has been revoked.
+	ErrTokenRevoked = errors.New("token has been revoked")
+	// tokenBlacklist holds the global instance of the Blacklist interface.
+	tokenBlacklist Blacklist
 )
 
 // Blacklist defines the interface for managing revoked tokens.
@@ -18,6 +27,27 @@ type InMemoryBlacklist struct {
 	mutex         sync.RWMutex         // Ensures thread-safe access to revokedTokens.
 	stopCleanup   chan struct{}        // Signals the cleanup goroutine to stop.
 	wg            sync.WaitGroup       // Tracks the cleanup goroutine for graceful shutdown.
+}
+
+// InitBlacklist initializes the global token blacklist with the provided implementation.
+func InitBlacklist(bl Blacklist) {
+	tokenBlacklist = bl
+}
+
+// RevokeToken marks a token as revoked until the specified expiry time.
+func RevokeToken(token string, expiry time.Time) error {
+	if tokenBlacklist == nil {
+		return fmt.Errorf("blacklist not initialized")
+	}
+	return tokenBlacklist.Revoke(token, expiry)
+}
+
+// IsTokenBlacklisted returns true if the token is currently revoked.
+func IsTokenBlacklisted(token string) bool {
+	if tokenBlacklist == nil {
+		return false
+	}
+	return tokenBlacklist.IsRevoked(token)
 }
 
 // NewInMemoryBlacklist initializes a new InMemoryBlacklist and starts periodic cleanup.
