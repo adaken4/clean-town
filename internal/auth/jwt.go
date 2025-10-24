@@ -49,7 +49,7 @@ func GenerateRefreshToken(signingKey []byte, user models.User) (string, error) {
 	return token.SignedString(signingKey)
 }
 
-func VerifyToken(tokenString string) (*CustomClaims, error) {
+func VerifyToken(tokenString string, secret []byte) (*CustomClaims, error) {
 	// Parse the token with custom claims
 	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 		// Verify signing algorithm
@@ -58,7 +58,7 @@ func VerifyToken(tokenString string) (*CustomClaims, error) {
 		}
 
 		// Return the secret key used for signing
-		return []byte("my-secret-key"), nil
+		return secret, nil
 	})
 
 	if err != nil {
@@ -74,6 +74,10 @@ func VerifyToken(tokenString string) (*CustomClaims, error) {
 	// Additional validation
 	if err := ValidateClaims(claims); err != nil {
 		return nil, err
+	}
+
+	if tokenBlacklist != nil && tokenBlacklist.IsRevoked(tokenString) {
+		return nil, ErrTokenRevoked
 	}
 
 	return claims, nil
