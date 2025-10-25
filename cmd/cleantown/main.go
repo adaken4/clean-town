@@ -8,8 +8,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/adaken4/clean-town/internal/auth"
 	"github.com/adaken4/clean-town/internal/config"
 	"github.com/adaken4/clean-town/internal/database"
+	"github.com/adaken4/clean-town/internal/models"
 )
 
 // Declare a string containing the application version number
@@ -20,8 +22,9 @@ const version = "0.0.1"
 // and middleware. At the moment this only contains a copy of the config struct and a
 // logger, but it will grow to include a lot more as the application progresses.
 type application struct {
-	config *config.Config
-	logger *slog.Logger
+	config   *config.Config
+	logger   *slog.Logger
+	userRepo models.UserRepository
 }
 
 func main() {
@@ -68,24 +71,27 @@ func main() {
 
 	startMetricsMonitoring(ctx, db)
 
+	userRepo := &models.PostgresUserRepository{DB: db}
+
+	blacklist := auth.NewInMemoryBlacklist()
+	auth.InitBlacklist(blacklist)
+	defer blacklist.Close()
+	logger.Info("token blacklist initialized and periodic cleanup started")
+
 	// Declare an instance of the application struct, containing the config struct and
 	// the logger.
 	app := &application{
-		config: cfg,
-		logger: logger,
+		config:   cfg,
+		logger:   logger,
+		userRepo: userRepo,
 	}
-
-	// Declare a new servemux and add a /v1/healthcheck route which dispatches requests
-	// to the healthcheckHandler method.
-	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/healthcheck", app.healthcheckHandler)
 
 	// Declare a HTTP server which listens on the port provided in the config struct,
 	// uses the servemux we created above as the handler, has some sensible timeout
 	// settings and writes any log messages to the structured logger at Error level.
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
-		Handler:      mux,
+		Handler:      app.routes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
