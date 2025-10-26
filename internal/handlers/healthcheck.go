@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"database/sql"
@@ -9,11 +9,16 @@ import (
 	"github.com/adaken4/clean-town/internal/database"
 )
 
+// Declare a string containing the application version number
+// TODO: Generate this automatically at build time
+// const version = "0.0.1"
+const version = "0.0.1"
+
 // Declare a handler which writes a plain-text response with information about the
 // application status, operating environment and version.
-func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "status: available")
-	fmt.Fprintf(w, "environment: %s\n", app.config.Server.Env)
+	fmt.Fprintf(w, "environment: %s\n", h.app.Config.Server.Env)
 	fmt.Fprintf(w, "version: %s\n", version)
 }
 
