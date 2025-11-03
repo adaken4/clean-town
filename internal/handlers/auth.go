@@ -42,3 +42,54 @@ func (h *Handlers) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		"message": "registration successful, please verify your email",
 	}, nil)
 }
+
+// LoginUser handles user login requests.
+func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
+	// Create a context with timeout to prevent hanging requests
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	// Decode the login request payload
+	var req models.LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		h.app.Logger.Error("login request decode error: " + err.Error())
+		return
+	}
+
+	// Authenticate user and generate tokens
+	access, refresh, err := h.app.Auth.Login(ctx, req.Email, req.Password)
+	if err != nil {
+		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+		h.app.Logger.Warn("failed login attempt for email" + req.Email)
+		return
+	}
+
+	// Set access token cookie (short-lived)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    access,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   h.app.Config.Server.Env == "production",
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   900, // 15 minutes
+	})
+
+	// Set refresh token cookie (long-lived)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refresh,
+		Path:     "/v1/auth/refresh",
+		HttpOnly: true,
+		Secure:   h.app.Config.Server.Env == "production",
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   604800, // 7 days
+	})
+
+	// Respond with success message
+	h.writeJSON(w, http.StatusOK, map[string]string{
+		"message":      "login successful",
+		"access_token": access,
+	}, nil)
+}
