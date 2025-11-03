@@ -93,3 +93,54 @@ func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
 		"access_token": access,
 	}, nil)
 }
+
+// RefreshToken handles requests to refresh authentication tokens.
+func (h *Handlers) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	// Create a context with timeout to prevent hanging requests
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	// Retrieve the refresh token from cookie
+	cookie, err := r.Cookie("refresh_token")
+	if err != nil {
+		http.Error(w, "refresh token missing", http.StatusUnauthorized)
+		h.app.Logger.Warn("refresh token cookie not found")
+		return
+	}
+
+	// Attempt to refresh tokens using the provided refresh token
+	access, refresh, err := h.app.Auth.RefreshTokens(ctx, cookie.Value)
+	if err != nil {
+		http.Error(w, "invalid or expired refresh token", http.StatusUnauthorized)
+		h.app.Logger.Warn("invalid refresh token: " + err.Error())
+		return
+	}
+
+	// Set new access token cookie (short-lived)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    access,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   h.app.Config.Server.Env == "production",
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   900, // 15 minutes
+	})
+
+	// Set new refresh token cookie (long-lived)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refresh,
+		Path:     "/v1/auth/refresh",
+		HttpOnly: true,
+		Secure:   h.app.Config.Server.Env == "production",
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   604800, // 7 days
+	})
+
+	// Respond with the new access_token
+	h.writeJSON(w, http.StatusOK, map[string]string{
+		"message":      "token refreshed successfully",
+		"access_token": access,
+	}, nil)
+}
