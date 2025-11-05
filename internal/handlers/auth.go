@@ -144,3 +144,45 @@ func (h *Handlers) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		"access_token": access,
 	}, nil)
 }
+
+// LogoutUser handles user logout requests.
+func (h *Handlers) LogoutUser(w http.ResponseWriter, r *http.Request) {
+	// Create a context with timeout to prevent hanging requests
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	// Retrieve the refresh token from cookie
+	cookie, err := r.Cookie("refresh_token")
+	if err != nil {
+		http.Error(w, "refresh token missing", http.StatusUnauthorized)
+		return
+	}
+
+	// Attempt to revoke the refresh token
+	if err := h.app.Auth.Logout(ctx, cookie.Value); err != nil {
+		h.app.Logger.Error("logout failed", "error", err)
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	// Clear access and refresh token cookies
+	clearCookie := func(name string, path string) {
+		http.SetCookie(w, &http.Cookie{
+			Name:     name,
+			Value:    "",
+			Path:     path,
+			HttpOnly: true,
+			Secure:   h.app.Config.Server.Env == "production",
+			SameSite: http.SameSiteStrictMode,
+			MaxAge:   -1, // Expire immediately
+		})
+	}
+
+	clearCookie("access_token", "/")
+	clearCookie("refresh_token", "/v1/auth/refresh")
+
+	// Respond with success message
+	h.writeJSON(w, http.StatusOK, map[string]string{
+		"message": "logout successful",
+	}, nil)
+}
