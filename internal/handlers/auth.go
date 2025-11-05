@@ -43,6 +43,33 @@ func (h *Handlers) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	}, nil)
 }
 
+// VerifyEmail handles user email verification requests using email verification token.
+func (h *Handlers) VerifyEmail(w http.ResponseWriter, r *http.Request) {
+	// Create a context with timeout to prevent hanging requests
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	// Get token from query parameters
+	tokenStr := r.URL.Query().Get("token")
+	if tokenStr == "" {
+		http.Error(w, "missing token", http.StatusBadRequest)
+		h.app.Logger.Warn("email verification attempted without token")
+		return
+	}
+
+	// Attempt to verify the email using the token
+	if err := h.app.Auth.VerifyEmail(ctx, tokenStr); err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		h.app.Logger.Error("email verification failed: " + err.Error())
+		return
+	}
+
+	// Respond with success message
+	h.writeJSON(w, http.StatusOK, map[string]string{
+		"message": "Email successfully verfied. You can now log in.",
+	}, nil)
+}
+
 // LoginUser handles user login requests.
 func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
 	// Create a context with timeout to prevent hanging requests
