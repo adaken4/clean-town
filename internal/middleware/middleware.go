@@ -30,3 +30,19 @@ func NewRateLimiter(r rate.Limit, burst int, logger *slog.Logger) *rateLimiter {
 		logger:   logger,
 	}
 }
+
+// getLimiter retrieves (or creates) a rate limiter for the given client IP.
+// Each IP gets its own rate limiter instance.
+func (rl *rateLimiter) getLimiter(ip string) *rate.Limiter {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	// Check if limiter for this IP already exists
+	limiter, exists := rl.limiters[ip]
+	if !exists {
+		// Create a new limiter for this IP
+		limiter = rate.NewLimiter(rl.r, rl.burst)
+		rl.limiters[ip] = limiter
+	}
+	return limiter
+}
