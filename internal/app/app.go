@@ -8,6 +8,7 @@ import (
 	"github.com/adaken4/clean-town/internal/auth"
 	"github.com/adaken4/clean-town/internal/config"
 	"github.com/adaken4/clean-town/internal/models"
+	"github.com/adaken4/clean-town/internal/services"
 )
 
 // App encapsulates core dependencies and services for the CleanTown application.
@@ -17,7 +18,7 @@ type App struct {
 	UserRepo  models.UserRepository   // Interface for user data access
 	DB        *sql.DB                 // Database connection
 	Blacklist *auth.InMemoryBlacklist // In-memory token blacklist for JWT revocation
-
+	Auth      *services.AuthService
 }
 
 // New initializes the App with its dependencies and starts the blacklist cleanup routine.
@@ -25,6 +26,13 @@ func New(cfg *config.Config, logger *slog.Logger, db *sql.DB) *App {
 	userRepo := &models.PostgresUserRepository{DB: db} // Set up user repository
 	blacklist := auth.NewInMemoryBlacklist()           // Create in-memory blacklist
 	auth.InitBlacklist(blacklist)                      // Start periodic cleanup
+
+	authService := services.AuthService{
+		Config: cfg,
+		UserRepo:  userRepo,
+		Blacklist: blacklist,
+		Logger:    logger,
+	}
 
 	logger.Info("token blacklist initialized and periodic cleanup started")
 
@@ -34,6 +42,7 @@ func New(cfg *config.Config, logger *slog.Logger, db *sql.DB) *App {
 		UserRepo:  userRepo,
 		DB:        db,
 		Blacklist: blacklist,
+		Auth:      &authService,
 	}
 }
 
