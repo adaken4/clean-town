@@ -2,6 +2,9 @@ package middleware
 
 import (
 	"log/slog"
+	"net"
+	"net/http"
+	"strings"
 	"sync"
 
 	"golang.org/x/time/rate"
@@ -45,4 +48,27 @@ func (rl *rateLimiter) getLimiter(ip string) *rate.Limiter {
 		rl.limiters[ip] = limiter
 	}
 	return limiter
+}
+
+// getClientIP extracts the client's IP address from the HTTP request.
+// It prioritizes the X-Forwarded-For and X-Real-IP headers, commonly set by proxies.
+func getClientIP(r *http.Request) (string, error) {
+	// Check X-Forwarded-For header (may contain multiple IPs)
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		// The first IP in the list is the original client
+		parts := strings.Split(xff, ",")
+		return strings.TrimSpace(parts[0]), nil
+	}
+
+	// Check X-Real-IP header (used by some reverse proxies)
+	if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
+		return xrip, nil
+	}
+
+	// Fallback: extract IP directly from the request’s remote address
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return "", err
+	}
+	return ip, nil
 }
