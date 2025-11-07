@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -71,4 +72,38 @@ func getClientIP(r *http.Request) (string, error) {
 		return "", err
 	}
 	return ip, nil
+}
+
+// Middleware wraps an existing HTTP handler with rate limiting functionality.
+// It rejects requests that exceed the defined rate limit for a given IP.
+func (rl *rateLimiter) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Identify the client by IP
+		ip, err := getClientIP(r)
+		if err != nil {
+			http.Error(w, "unable to determine IP", http.StatusInternalServerError)
+			rl.logger.Warn("failed to extract client IP: " + err.Error())
+			return
+		}
+
+		// Retrieve (or create) a limiter for this IP
+		limiter := rl.getLimiter(ip)
+
+		// Check if the request is allowed under the rate limit
+		if !limiter.Allow() {
+			// Calculate how long the client should wait before retrying
+			retryAfter := limiter.Reserve().Delay()
+
+			// Add the Retry-After header so the client knows when to retry
+			w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter.Seconds())))
+
+			// Deny the request
+			http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
+			rl.logger.Warn("rate limit exceeded for IP: " + ip)
+			return
+		}
+
+		// If allowed, forward the request to the next handler
+		next.ServeHTTP(w, r)
+	})
 }
