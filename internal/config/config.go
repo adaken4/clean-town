@@ -15,6 +15,7 @@ type Config struct {
 	Database DatabaseConfig `mapstructure:"database"`
 	Auth     AuthConfig     `mapstructure:"auth"`
 	Payment  PaymentConfig  `mapstructure:"payment"`
+	Email    EmailConfig    `mapstructure:"email"`
 }
 
 // ServerConfig holds server-related settings (port, environment).
@@ -49,6 +50,11 @@ type AuthConfig struct {
 type PaymentConfig struct {
 	Provider string `mapstructure:"provider"`
 	APIKey   string `mapstructure:"apikey"`
+}
+
+type EmailConfig struct {
+	FromAddress string `mapstructure:"from"`
+	AppPassword string `mapstructure:"app_password"`
 }
 
 // LoadConfig loads application configuration by merging settings from:
@@ -102,6 +108,8 @@ func LoadConfig(path string) (*Config, error) {
 	v.BindEnv("auth.issuer", "AUTH_ISSUER")
 	v.BindEnv("payment.provider", "PAYMENT_PROVIDER")
 	v.BindEnv("payment.apikey", "PAYMENT_APIKEY")
+	v.BindEnv("email.from", "EMAIL_FROM")
+	v.BindEnv("email.app_password", "EMAIL_APP_PASSWORD")
 
 	// 4. Set sensible defaults for development (only used if not overridden).
 	v.SetDefault("server.port", 4000)
@@ -119,6 +127,7 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("database.max_idle_time", 15)
 	v.SetDefault("auth.issuer", "myapp")
 	v.SetDefault("payment.provider", "stripe")
+	v.SetDefault("email.from", "no-reply@localhost")
 
 	// 5. Unmarshal merged configuration into strongly typed struct.
 	var config Config
