@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -140,4 +141,32 @@ func (s *AuthService) Register(ctx context.Context, req models.RegisterRequest) 
 	}
 
 	return u, nil
+}
+
+// Login authenticates a user using their email and password,
+// and returns a pair of access + refresh tokens.
+func (s *AuthService) Login(ctx context.Context, email, password string) (string, string, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+
+	// Retrieve user by email
+	user, err := s.UserRepo.FindByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", "", models.ErrInvalidCredentials
+		}
+	}
+
+	// Generate access token (short-lived)
+	access, err := auth.GenerateAccessToken([]byte(s.Config.Auth.JWTSecret), *user)
+	if err != nil {
+		return "", "", err
+	}
+
+	// Generate refresh token (longer-lived)
+	refresh, err := auth.GenerateRefreshToken([]byte(s.Config.Auth.JWTSecret), *user)
+	if err != nil {
+		return "", "", err
+	}
+
+	return access, refresh, nil
 }
