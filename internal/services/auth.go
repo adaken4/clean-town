@@ -170,3 +170,19 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 
 	return access, refresh, nil
 }
+
+// Logout invalidates a given refresh token by adding it to the blacklist.
+// Once blacklisted, the token can no longer be used for refresh operations.
+func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
+	// Parse and verify token
+	claims, err := auth.VerifyToken(refreshToken, []byte(s.Config.Auth.JWTSecret))
+	if err != nil {
+		return fmt.Errorf("invalid or expired refresh token: %w", err)
+	}
+
+	// Add token to blacklist until it naturally expires
+	if err := auth.RevokeToken(refreshToken, claims.ExpiresAt.Time); err != nil {
+		return fmt.Errorf("failed to revoke token: %w", err)
+	}
+	return nil
+}
