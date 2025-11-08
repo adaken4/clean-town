@@ -1,13 +1,19 @@
 package services
 
-import "golang.org/x/crypto/bcrypt"
+import (
+	"log/slog"
 
-// HashPassword hashes a plain password
-func HashPassword(password string) ([]byte, error) {
-	return bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-}
+	"github.com/adaken4/clean-town/internal/auth"
+	"github.com/adaken4/clean-town/internal/config"
+	"github.com/adaken4/clean-town/internal/models"
+)
 
-// CheckPassword compares a plain password with the stored hash
-func CheckPassword(hash []byte, password string) error {
-	return bcrypt.CompareHashAndPassword(hash, []byte(password))
+// AuthService provides all authentication and authorization operations
+// such as registration, login, logout, token refresh, and email verification.
+// It depends on a UserRepository for persistence and a JWT-based token system.
+type AuthService struct {
+	Config    *config.Config
+	UserRepo  models.UserRepository
+	Blacklist *auth.InMemoryBlacklist
+	Logger    *slog.Logger
 }
