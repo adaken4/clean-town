@@ -1,14 +1,18 @@
 package services
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/adaken4/clean-town/internal/auth"
 	"github.com/adaken4/clean-town/internal/config"
 	"github.com/adaken4/clean-town/internal/models"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/lib/pq"
 	"github.com/wneessen/go-mail"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -86,4 +90,54 @@ func SendVerificationEmail(email, token string, cfg *config.Config) error {
 	}
 
 	return nil
+}
+
+// Register handles the creation of a new user account
+func (s *AuthService) Register(ctx context.Context, req models.RegisterRequest) (*models.User, error) {
+	// Clean up user input (trim spaces, normalize casing)
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	req.Name = strings.TrimSpace(req.Name)
+	req.Role = strings.TrimSpace(req.Role)
+	req.Town = strings.TrimSpace(req.Town)
+
+	// Hash the password before storing
+	hash, err := HashPassword(req.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	// Prepare the user model for persistence
+	u := &models.User{
+		Name:         req.Name,
+		Email:        req.Email,
+		PasswordHash: hash,
+		Role:         req.Role,
+		Town:         &req.Town,
+	}
+
+	// Generate an email verification token (JWT)
+	token, err := GenerateEmailVerificationToken([]byte(s.Config.Auth.JWTSecret), u.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set expiry time for verification token
+	expiry := time.Now().Add(31 * time.Minute)
+
+	// Save the new user and verification token
+	if err := s.UserRepo.Create(ctx, u, token, expiry); err != nil {
+		var pqErr *pq.Error
+		// Detect PostgreSQL duplicate key violation (unique email)
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			return nil, models.ErrDuplicateEmail
+		}
+		return nil, err
+	}
+
+	// Attempt to send the verification email (log error if sending fails)
+	if err := SendVerificationEmail(u.Email, token, s.Config); err != nil {
+		s.Logger.Error("failed to send verification email", "error", err)
+	}
+
+	return u, nil
 }
