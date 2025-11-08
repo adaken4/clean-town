@@ -227,3 +227,43 @@ func (s *AuthService) VerifyEmail(ctx context.Context, tokenStr string) error {
 
 	return nil
 }
+
+// RefreshTokens issues a new access and refresh token pair
+// after validating and revoking the old refresh token.
+func (s *AuthService) RefreshTokens(ctx context.Context, oldRefreshToken string) (string, string, error) {
+	// Verify old refresh token validity
+	claims, err := auth.VerifyToken(oldRefreshToken, []byte(s.Config.Auth.JWTSecret))
+	if err != nil {
+		return "", "", fmt.Errorf("invalid or expired refresh token: %w", err)
+	}
+
+	// Prevent use of revoked tokens
+	if auth.IsTokenBlacklisted(oldRefreshToken) {
+		return "", "", errors.New("token has been revoked")
+	}
+
+	// Construct a lightweight user object from claims
+	user := models.User{
+		ID:   claims.UserID,
+		Role: claims.UserRole,
+	}
+
+	// Generate new access token
+	newAccessToken, err := auth.GenerateAccessToken([]byte(s.Config.Auth.JWTSecret), user)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate access token: %w", err)
+	}
+
+	// Generate new refresh token
+	newRefreshToken, err := auth.GenerateRefreshToken([]byte(s.Config.Auth.JWTSecret), user)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	// Blacklist the old refresh token
+	if err := auth.RevokeToken(oldRefreshToken, claims.ExpiresAt.Time); err != nil {
+		s.Logger.Error("failed to blacklist old refresh token", "error", err)
+	}
+
+	return newAccessToken, newRefreshToken, nil
+}
