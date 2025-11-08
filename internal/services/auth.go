@@ -186,3 +186,44 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 	}
 	return nil
 }
+
+// VerifyEmail validates a user's email verification token,
+// confirms its authenticity, and updates the user’s verified status in the database.
+func (s *AuthService) VerifyEmail(ctx context.Context, tokenStr string) error {
+	// Parse and validate the token using the configured signing key
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		// Ensure the token uses HMAC signing (to prevent algorithm confusion)
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(s.Config.Auth.JWTSecret), nil
+	})
+	if err != nil || !token.Valid {
+		return fmt.Errorf("invalid or expired token: %w", err)
+	}
+
+	// Extract claims (ensure it's an email verification token)
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || claims["type"] != "email_verification" {
+		return errors.New("invalid token claims")
+	}
+
+	// Retrieve email from token claims
+	email, ok := claims["email"].(string)
+	if !ok {
+		return errors.New("invalid email or token")
+	}
+
+	// Retrieve the corresponding user
+	user, err := s.UserRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+
+	// Mark the user as verified
+	if err := s.UserRepo.MarkUserAsVerified(ctx, uint64(user.ID)); err != nil {
+		return fmt.Errorf("failed to update user status: %w", err)
+	}
+
+	return nil
+}
