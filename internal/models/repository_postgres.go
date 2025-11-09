@@ -3,8 +3,15 @@ package models
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"time"
 
 	"github.com/lib/pq"
+)
+
+var (
+	ErrDuplicateEmail error = errors.New("email already registered")
+	ErrInvalidCredentials error = errors.New("invalid email or password")
 )
 
 type PostgresUserRepository struct {
@@ -14,10 +21,10 @@ type PostgresUserRepository struct {
 // Create inserts a new user record into the database.
 // It returns an error if the insertion fails.
 // On success, it updates the user's ID and timestamps fields.
-func (r *PostgresUserRepository) Create(ctx context.Context, user *User) error {
+func (r *PostgresUserRepository) Create(ctx context.Context, user *User, token string, expiry time.Time) error {
 	query := `
-		INSERT INTO users (name, email, password_hash, role, town)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO users (name, email, password_hash, role, town, verification_token, verification_token_expiry)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, created_at, updated_at`
 
 	return r.DB.QueryRowContext(ctx, query,
@@ -26,6 +33,8 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *User) error {
 		user.PasswordHash,
 		user.Role,
 		user.Town,
+		token,
+		expiry,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 }
 

@@ -1,4 +1,4 @@
-package main
+package monitoring
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/adaken4/clean-town/internal/database"
 )
 
-func startMetricsMonitoring(ctx context.Context, db *sql.DB) {
+func StartMetricsMonitoring(ctx context.Context, db *sql.DB) {
 	metricsChan := make(chan *database.Metrics, 10)
 
 	// Start background monitoring (every 30 seconds)

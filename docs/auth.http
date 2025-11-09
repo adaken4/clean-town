@@ -1,0 +1,106 @@
+@hostname = localhost
+@port = 8080
+@host = {{hostname}}:{{port}}
+
+// ----------------------------------------------------
+// Environment Variables
+// ----------------------------------------------------
+// Set these variables after running the requests:
+@access_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjbGVhbi10b3duLWF1dGgiLCJzdWIiOiJ1c2VyLTciLCJleHAiOjE3NjI2NzczMjUsImlhdCI6MTc2MjY3NjQyNSwiVXNlcklEIjo3LCJyb2xlIjoidm9sdW50ZWVyIn0.BKA3g8n_Qgbi3U-TFboRS3-wzFjdGYdi7b8fP1s5QHM
+@refresh_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjbGVhbi10b3duLWF1dGgiLCJzdWIiOiJ1c2VyLTciLCJleHAiOjE3NjMyODEyMjUsImlhdCI6MTc2MjY3NjQyNSwiVXNlcklEIjo3LCJyb2xlIjoidm9sdW50ZWVyIn0.cyy68Ok5NSOteVrlqz2W-OQMW5cbbSZilVB4fd7mXVw
+
+// Set user credentials for testing:
+@test_name = Kennedy Ada
+@test_email = adakennedy@outlook.com
+@test_password = securepassword123
+@test_role = volunteer
+@test_town = Kisumu
+// ----------------------------------------------------
+
+
+### 1. Health Check (GET /v1/healthcheck)
+// Test that the server is up and running.
+GET http://{{host}}/v1/healthcheck
+
+---
+
+### 2. Register User (POST /v1/auth/register)
+// Creates a new user in the 'pending' status and sends a verification email.
+POST http://{{host}}/v1/auth/register
+Content-Type: application/json
+
+{
+    "name": "{{test_name}}",
+    "email": "{{test_email}}",
+    "password": "{{test_password}}",
+    "role": "{{test_role}}",
+    "town": "{{test_town}}"
+}
+
+// NOTE: You must manually retrieve the JWT verification token sent in the email 
+// for the next step.
+
+---
+
+### 3. Verify Email (GET /v1/verify?token=JWT_TOKEN)
+// Activates the user account (status becomes 'active').
+// Replace 'JWT_TOKEN' with the actual token sent in the email.
+// The JWT token is the value of 'verification_token' in the database.
+GET http://{{host}}/v1/auth/verify-email?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkYWtlbm5lZHlAb3V0bG9vay5jb20iLCJleHAiOjE3NjE1NzMzODgsImlhdCI6MTc2MTU3MTU4OCwidHlwZSI6ImVtYWlsX3ZlcmlmaWNhdGlvbiJ9.7eRCzE2iHWD2Ad7sQyGhjoVkyim2KNWtAJA0HOXVH3Q
+
+---
+
+### 4. Login User (POST /v1/auth/login)
+// Logs in the verified user and receives access/refresh tokens as cookies.
+POST http://{{host}}/v1/auth/login
+Content-Type: application/json
+
+{
+    "email": "{{test_email}}",
+    "password": "{{test_password}}"
+}
+
+// You need to set the received tokens as environment variables for subsequent requests:
+// @access_token = {{response.body.access_token}}
+// @refresh_token = {{response.cookies.refresh_token}}
+
+---
+
+### 5. Refresh Token (POST /v1/auth/refresh)
+// Use the valid 'refresh_token' cookie (set by the previous login step) to get a NEW pair of tokens.
+// NOTE: This request is designed to work even if the access token has expired.
+// The REST Client automatically sends cookies for the matching path.
+POST http://{{host}}/v1/auth/refresh
+Cookie: refresh_token = {{refresh_token}}
+
+// Expected Response:
+// - Status: 200 OK
+// - New 'access_token' cookie
+// - New 'refresh_token' cookie (This is good for security - "refresh token rotation")
+// - JSON body containing the new 'access_token' (as per your loginHandler response structure)
+
+---
+### 6. Logout User (POST /v1/auth/logout)
+// Revokes the refresh token and clears both cookies.
+// This request requires the 'refresh_token' cookie to be set.
+
+// **Note:** Huachao Mao's client often struggles to automatically pass cookies 
+// from previous responses to the next request without manual intervention.
+// You may need to manually copy the 'refresh_token' cookie from the Login 
+// response and manually set it here, or ensure your client/extension is 
+// configured to save/send cookies.
+
+POST http://{{host}}/v1/auth/logout
+Cookie: refresh_token={{refresh_token}}
+Content-Type: application/json
+
+### 7. Test Login with Inactive/Unverified Account
+// Attempt to log in with a *new* email that hasn't gone through the /v1/verify step.
+POST http://{{host}}/v1/auth/login
+Content-Type: application/json
+
+{
+    "email": "unverified.user@example.com",
+    "password": "somepassword"
+}
+// Expected Response: 403 Forbidden ("account not verified or inactive")
