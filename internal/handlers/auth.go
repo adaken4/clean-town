@@ -88,7 +88,7 @@ func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
 	access, refresh, err := h.app.Auth.Login(ctx, req.Email, req.Password)
 	if err != nil {
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
-		h.app.Logger.Warn("failed login attempt for email" + req.Email)
+		h.app.Logger.Warn("failed login attempt for email: " + req.Email)
 		return
 	}
 

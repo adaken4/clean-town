@@ -156,6 +156,11 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 		}
 	}
 
+	// Compare hashed password
+	if err = CheckPassword(user.PasswordHash, password); err != nil {
+		return "", "", models.ErrInvalidCredentials;
+	}
+
 	// Generate access token (short-lived)
 	access, err := auth.GenerateAccessToken([]byte(s.Config.Auth.JWTSecret), *user)
 	if err != nil {
