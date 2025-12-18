@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/adaken4/clean-town/internal/app"
-	"github.com/adaken4/clean-town/internal/router"
+	"github.com/adaken4/clean-town/internal/delivery/ct-http/router"
 )
 
 func main() {

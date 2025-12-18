@@ -1,4 +1,4 @@
-package auth
+package middleware
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/adaken4/clean-town/internal/auth"
 )
 
 type contextKey string
@@ -50,7 +52,7 @@ func AuthMiddleware(secret []byte) func(http.HandlerFunc) http.HandlerFunc {
 			}
 
 			// Verify token
-			claims, err := VerifyToken(headerToken, secret)
+			claims, err := auth.VerifyToken(headerToken, secret)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				log.Printf("Auth attempt: %s %s", r.Method, r.URL.Path)

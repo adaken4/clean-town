@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/adaken4/clean-town/internal/app"
-	"github.com/adaken4/clean-town/internal/handlers"
-	"github.com/adaken4/clean-town/internal/middleware"
+	"github.com/adaken4/clean-town/internal/delivery/ct-http/handlers"
+	"github.com/adaken4/clean-town/internal/delivery/ct-http/middleware"
 	"github.com/julienschmidt/httprouter"
 )
 
